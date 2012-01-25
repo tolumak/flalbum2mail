@@ -1,61 +1,89 @@
 #include <stdio.h>
 #include <flickcurl.h>
-
-int main(int argc, char *argv[]);
-
-int main(int argc, char *argv[]) {
-  flickcurl *fc;
-  flickcurl_photo *photo;
-  flickcurl_photo_field_type field_type;
-  flickcurl_photoset * set;
-  flickcurl_photoset ** sets;
-  int i;
-
-  flickcurl_init(); /* optional static initialising of resources */
-  fc=flickcurl_new();
-
-  /* Set configuration, or more likely read from a config file */
-  flickcurl_set_api_key(fc, "...");
-  flickcurl_set_shared_secret(fc, "...");
-  flickcurl_set_auth_token(fc, "...");
-
-  sets = flickcurl_photosets_getList(fc, NULL);
-
-  for (set = sets[0], i = 0 ; set ; set = sets[++i]) {
-	  printf("%s %s %d photos\n", set->id, set->title, set->photos_count);
-  }
+#include <getopt.h>
 
 
-#if 0
-  photo=flickcurl_photos_getInfo(fc, "6756767665"); /* photo ID */
+flickcurl_photoset * find_set(flickcurl *fc, char *name)
+{
+	int i;
+	flickcurl_photoset ** sets;
+	flickcurl_photoset *set, *ret = NULL;
 
-  for(field_type=0; field_type <= PHOTO_FIELD_LAST; field_type++) {
-    flickcurl_field_value_type datatype=photo->fields[field_type].type;
+	sets = flickcurl_photosets_getList(fc, NULL);
+	if (!sets)
+		return NULL;
 
-    if(datatype != VALUE_TYPE_NONE)
-      fprintf(stderr, "field %s (%d) with %s value: '%s' / %d\n", 
-              flickcurl_get_photo_field_label(field_type), (int)field_type,
-              flickcurl_get_field_value_type_label(datatype),
-              photo->fields[field_type].string,
-              photo->fields[field_type].integer);
-  }
+	for (set = sets[0], i = 0 ; set ; set = sets[++i]) {
+		if (!strcmp(name, set->title)) {
+			ret = flickcurl_photosets_getInfo(fc, set->id);
+			goto out;
+		}
+	}
 
-  for(i=0; i < photo->tags_count; i++) {
-    flickcurl_tag* tag=photo->tags[i];
-    fprintf(stderr,
-            "%d) %s tag: id %s author ID %s name %s raw '%s' cooked '%s' count %d\n",
-            i, (tag->machine_tag ? "machine" : "regular"),
-            tag->id, tag->author, 
-            (tag->authorname ? tag->authorname : "(Unknown)"), 
-            tag->raw, tag->cooked,
-            tag->count);
-  }
+out:
+	flickcurl_free_photosets(sets);
+	return ret;
+}
 
-  flickcurl_free_photo(photo);
-#endif
-  flickcurl_free_photosets(sets);
-  flickcurl_free(fc);
-  flickcurl_finish(); /* optional static free of resources */
 
-  return 0;
+int main(int argc, char ** argv)
+{
+	int c;
+	char * album_name = NULL;
+	int auth_is_set = 0;
+	int ret = 1;
+	flickcurl *fc;
+
+	flickcurl_init(); /* optional static initialising of resources */
+	fc=flickcurl_new();
+
+	/* Set configuration, or more likely read from a config file */
+	flickcurl_set_api_key(fc, "...");
+	flickcurl_set_shared_secret(fc, "...");
+
+
+	static struct option long_options[] = {
+		{"auth-token", required_argument, 0, 0},
+		{"album-name", required_argument, 0, 0},
+		{0, 0, 0, 0}
+	};
+
+	while(1) {
+		int option_index = 0;
+		c = getopt_long(argc, argv, "",
+				long_options, &option_index);
+		if (c == -1)
+			break;
+		if (c == 0) {
+			switch(option_index) {
+			case 0:
+				flickcurl_set_auth_token(fc, optarg);
+				auth_is_set = 1;
+				break;
+			case 1:
+				album_name = optarg;
+				break;
+			}
+		}
+	}
+
+	if (!auth_is_set) {
+		fprintf(stderr, "Authentification token required\n");
+		goto out;
+	}
+
+	if (!album_name) {
+		fprintf(stderr, "Album name required\n");
+		goto out;
+	}
+
+
+	ret = 0;
+
+out:
+	flickcurl_free(fc);
+	flickcurl_finish(); /* optional static free of resources */
+
+	return ret;
+
 }
