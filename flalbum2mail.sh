@@ -8,12 +8,14 @@ FROM_NAME="$5"
 
 shift 5
 
-photos=`./flalbum2mail --album "$ALBUM_NAME" --auth "$AUTH" | grep -e "^A" | cut -d ' ' -f 3`
+photos=`./flalbum2mail --album "$ALBUM_NAME" --auth "$AUTH" | grep -e "^A" | cut -d ' ' -f 3-4 --output-delimiter=','`
 
 photo_count=0
 for i in $photos ; do
     photo_count=$(( $photo_count + 1 ))
-    photo_list_as_cells="${photo_list_as_cells}<td><img src=$i></td>"
+    page=`echo $i | cut -d ',' -f 1`
+    img=`echo $i | cut -d ',' -f 2`
+    photo_list_as_cells="${photo_list_as_cells}<td><a href=$page><img src=$img></a></td>"
 done
 
 sed_script="sed -e 's/album_name/$ALBUM_NAME/g' -e 's/photo_count/$photo_count/g' -e 's#photo_list_as_cells#$photo_list_as_cells#g' -e 's#album_url#$ALBUM_URL#g'"

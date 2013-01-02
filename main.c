@@ -294,7 +294,8 @@ int main(int argc, char ** argv)
 		flickcurl_photo * photo;
 		photo = flickcurl_photos_getInfo(fc, elt->id);
 		if (photo)
-			printf("A %s %s\n", elt->id,
+			printf("A %s %s %s\n", elt->id,
+			       flickcurl_photo_as_page_uri(photo),
 			       flickcurl_photo_as_source_uri(photo, 's')
 				);
 		elt = elt->next;
